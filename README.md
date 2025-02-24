@@ -16,6 +16,18 @@ This project explores multilingual feedback as a strategy for improving the abst
   - [M-MMLU](https://huggingface.co/datasets/m-mmlu)(Multilingual Massive Multitask Language Understanding): Open-sourced and accessible for multilingual QA evaluation
   - [HellaSwag](https://rowanzellers.com/hellaswag/): Open-sourced dataset for commonsense reasoning in multiple languages.
   - [Belebele](https://huggingface.co/datasets/belebele): Multilingual reading comprehension dataset
+## 📊 Dataset Statistics
+Below are the specific languages and datasets we used in our experiments. Other languages available in these datasets were not included in our analysis:
+
+| Language | HellaSwag Test Data | MMLU Test Data |
+|----------|--------------------|---------------|
+| bn       | 771                | 726           |
+| kn       | 761                | 646           |
+| ml       | 753                | 639           |
+| mr       | 774                | 720           |
+| ne       | 777                | 740           |
+| ta       | 700                | 676           |
+| te       | 738                | 647           |
 
 ## 🚀 How to Run
 1. Clone the repository:
