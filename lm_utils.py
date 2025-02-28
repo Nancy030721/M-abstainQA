@@ -1,7 +1,7 @@
 from tqdm import tqdm
 import transformers
 import torch
-# import openai
+import openai
 import os
 import time
 import numpy as np
@@ -31,12 +31,12 @@ def llm_init(model_name):
         tokenizer = AutoTokenizer.from_pretrained("CohereForAI/aya-101")
         model = AutoModelForSeq2SeqLM.from_pretrained("CohereForAI/aya-101", device_map="auto")
     
-    # if model_name == "chatgpt" or model_name == "gpt4":
-    #     openai.api_key = os.getenv("OPENAI_API_KEY")
+    if model_name == "chatgpt" or model_name == "gpt4":
+        openai.api_key = os.getenv("OPENAI_API_KEY")
 
-    # if model_name == "gemini":
-    #     GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
-    #     genai.configure(api_key=GOOGLE_API_KEY)
+    if model_name == "gemini":
+        GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
+        genai.configure(api_key=GOOGLE_API_KEY)
 
 def wipe_model():
     global device
@@ -102,41 +102,41 @@ def llm_response(prompt, model_name, probs = False, temperature = 0.1, max_new_t
         else:
             return generated_text
     
-    # elif model_name == "chatgpt":
-    #     response = openai.Completion.create(
-    #         model="gpt-3.5-turbo-instruct",
-    #         prompt=prompt,
-    #         temperature=temperature,
-    #         max_tokens=max_new_tokens,
-    #         logprobs=1,
-    #     )
-    #     time.sleep(0.1)
-    #     token_probs = {}
-    #     for tok, score in zip(response.choices[0].logprobs.tokens, response.choices[0].logprobs.token_logprobs):
-    #         token_probs[tok] = np.exp(score)
-    #     if probs:
-    #         return response.choices[0].text, token_probs
-    #     else:
-    #         return response.choices[0].text
+    elif model_name == "chatgpt":
+        response = openai.Completion.create(
+            model="gpt-3.5-turbo-instruct",
+            prompt=prompt,
+            temperature=temperature,
+            max_tokens=max_new_tokens,
+            logprobs=1,
+        )
+        time.sleep(0.1)
+        token_probs = {}
+        for tok, score in zip(response.choices[0].logprobs.tokens, response.choices[0].logprobs.token_logprobs):
+            token_probs[tok] = np.exp(score)
+        if probs:
+            return response.choices[0].text, token_probs
+        else:
+            return response.choices[0].text
     
-    # elif model_name == "gpt4":
-    #     response = openai.ChatCompletion.create(
-    #                 model="gpt-4-turbo",
-    #                 temperature=temperature,
-    #                 messages=[
-    #                     {"role": "user", "content": prompt}
-    #                 ],
-    #                 max_tokens=max_new_tokens,
-    #                 logprobs=True,
-    #             )
-    #     time.sleep(0.1)
-    #     token_probs = {}
-    #     for thing in response['choices'][0]['logprobs']["content"]:
-    #         token_probs[thing["token"]] = np.exp(thing["logprob"])
-    #     if probs:
-    #         return response['choices'][0]['message']['content'].strip(), token_probs
-    #     else:
-    #         return response['choices'][0]['message']['content'].strip()
+    elif model_name == "gpt4":
+        response = openai.ChatCompletion.create(
+                    model="gpt-4-turbo",
+                    temperature=temperature,
+                    messages=[
+                        {"role": "user", "content": prompt}
+                    ],
+                    max_tokens=max_new_tokens,
+                    logprobs=True,
+                )
+        time.sleep(0.1)
+        token_probs = {}
+        for thing in response['choices'][0]['logprobs']["content"]:
+            token_probs[thing["token"]] = np.exp(thing["logprob"])
+        if probs:
+            return response['choices'][0]['message']['content'].strip(), token_probs
+        else:
+            return response['choices'][0]['message']['content'].strip()
     
 def answer_parsing(response, model_name):
     # parsing special gemini answers
