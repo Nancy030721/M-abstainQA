@@ -1,0 +1,2 @@
+Run multirelated:
+python multirelated.py -m gemini -d mmlu -s bn -o 0.01  -l -f
