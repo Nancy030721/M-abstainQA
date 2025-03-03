@@ -1,5 +1,4 @@
 from tqdm import tqdm
-import transformers
 import torch
 import openai
 import os
@@ -7,100 +6,82 @@ import time
 import numpy as np
 import time
 import wikipedia as wp
-from transformers import AutoModelForCausalLM, AutoTokenizer, AutoModelForSequenceClassification, AutoModelForSeq2SeqLM
+from transformers import AutoTokenizer, AutoModelForSequenceClassification
 from tenacity import (
     retry,
     stop_after_attempt,
     wait_random_exponential,
 )  # for exponential backoff
 
-import google.generativeai as genai #for gemini
+from llm import LLM
 
-device = "mps" if torch.backends.mps.is_available() else "cpu"  # MPS for Mac M1
+# import google.generativeai as genai #for gemini
+
+device = "cuda"
 
 def llm_init(model_name):
     global device
     global model
-    global tokenizer
     global pipeline
 
     
     print("init model")
     if model_name == "aya_13b":
         device = "cuda"
-        tokenizer = AutoTokenizer.from_pretrained("CohereForAI/aya-101")
-        model = AutoModelForSeq2SeqLM.from_pretrained("CohereForAI/aya-101", device_map="auto")
+        model = LLM(model="CohereForAI/aya-101", engine_dir="/data/aya-101-trt-bf16-engine/")
     
     if model_name == "chatgpt" or model_name == "gpt4":
         openai.api_key = os.getenv("OPENAI_API_KEY")
 
-    if model_name == "gemini":
-        GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
-        genai.configure(api_key=GOOGLE_API_KEY)
+    # if model_name == "gemini":
+    #     GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
+    #     genai.configure(api_key=GOOGLE_API_KEY)
 
 def wipe_model():
     global device
     global model
-    global tokenizer
     global pipeline
     device = None
     model = None
-    tokenizer = None
     pipeline = None
     del device
     del model
-    del tokenizer
     del pipeline
 
 @retry(wait=wait_random_exponential(min=1, max=20), stop=stop_after_attempt(10))
 def llm_response(prompt, model_name, probs = False, temperature = 0.1, max_new_tokens = 200):
-    global model, tokenizer
-    if model_name == "gemini":
-        model = genai.GenerativeModel("models/gemini-1.5-flash-001")
-        response = model.generate_content(
-            prompt,
-            generation_config=genai.types.GenerationConfig(
-                temperature=temperature,
-                max_output_tokens=max_new_tokens
-            )
-        )
+    global model
+    # if model_name == "gemini":
+    #     model = genai.GenerativeModel("models/gemini-1.5-flash-001")
+    #     response = model.generate_content(
+    #         prompt,
+    #         generation_config=genai.types.GenerationConfig(
+    #             temperature=temperature,
+    #             max_output_tokens=max_new_tokens
+    #         )
+    #     )
         
-        if not response.candidates or not response.candidates[0].content.parts:
-                print("Gemini blocked a response due to content moderation.")
-                return "Error: Gemini blocked the response due to content moderation."
+    #     if not response.candidates or not response.candidates[0].content.parts:
+    #             print("Gemini blocked a response due to content moderation.")
+    #             return "Error: Gemini blocked the response due to content moderation."
 
-        generated_text = response.text.strip()
-        token_probs = {}  # Gemini does not return token probabilities?
+    #     generated_text = response.text.strip()
+    #     token_probs = {}  # Gemini does not return token probabilities?
 
-        if probs:
-            return generated_text, token_probs
-        else:
-            return generated_text
+    #     if probs:
+    #         return generated_text, token_probs
+    #     else:
+    #         return generated_text
         
-    elif model_name == "aya_13b":
-        tokenizer.pad_token_id = tokenizer.eos_token_id
-        inputs = tokenizer([prompt], return_tensors="pt").to(device)
-        outputs = model.generate(**inputs, max_new_tokens=max_new_tokens, return_dict_in_generate=True, output_scores=True, temperature=temperature, do_sample=True)
+    if model_name == "aya_13b":
+        outputs = model.generate(prompt, max_new_tokens=max_new_tokens, return_dict=probs, temperature=temperature)
 
         # print(outputs)
 
-        transition_scores = model.compute_transition_scores(
-            outputs.sequences, outputs.scores, normalize_logits=True
-        )
-
-        input_length = inputs.input_ids.shape[1]
-        if model_name == "aya_13b" or model_name == "aya23_8b":
-            generated_tokens = outputs.sequences[:, 1:-1]
+        if isinstance(outputs, dict):
+            return outputs["generated_texts"][0], outputs["token_probs"][0]
         else:
-            generated_tokens = outputs.sequences[:, input_length:]
-        generated_text = tokenizer.batch_decode(generated_tokens)[0].strip()
-        token_probs = {}
-        for tok, score in zip(generated_tokens[0], transition_scores[0]):
-            token_probs[tokenizer.decode(tok).strip()] = np.exp(score.item())
-        if probs:
-            return generated_text, token_probs
-        else:
-            return generated_text
+            return outputs[0]
     
     elif model_name == "chatgpt":
         response = openai.Completion.create(
@@ -140,14 +121,14 @@ def llm_response(prompt, model_name, probs = False, temperature = 0.1, max_new_t
     
 def answer_parsing(response, model_name):
     # parsing special gemini answers
-    if model_name == "gemini":
-        temp = response.lower().strip().split(" ")
-        if temp[0] == "Error: ": # for content moderated response from Gemini
-            return "Z" # so that its absolutely wrong
-        for option in ["**a", "**b", "**c", "**d", "**e"]:
-            for i in range(len(temp)):
-                if option in temp[i]:
-                    return option.replace("**", "").upper()
+    # if model_name == "gemini":
+    #     temp = response.lower().strip().split(" ")
+    #     if temp[0] == "Error: ": # for content moderated response from Gemini
+    #         return "Z" # so that its absolutely wrong
+    #     for option in ["**a", "**b", "**c", "**d", "**e"]:
+    #         for i in range(len(temp)):
+    #             if option in temp[i]:
+    #                 return option.replace("**", "").upper()
     # mode 1: answer directly after
     temp = response.strip().split(" ")
     for option in ["A", "B", "C", "D", "E"]:
