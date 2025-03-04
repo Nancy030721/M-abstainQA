@@ -28,7 +28,7 @@ def llm_init(model_name):
     print("init model")
     if model_name == "aya_13b":
         device = "cuda"
-        model = LLM(model="CohereForAI/aya-101", engine_dir="/data/aya-101-trt-bf16-engine/")
+        model = LLM(model="CohereForAI/aya-101", engine_dir="/data/aya-101-trt-bf16-engine-m/")
     
     if model_name == "chatgpt" or model_name == "gpt4":
         openai.api_key = os.getenv("OPENAI_API_KEY")
@@ -74,14 +74,7 @@ def llm_response(prompt, model_name, probs = False, temperature = 0.1, max_new_t
     #         return generated_text
         
     if model_name == "aya_13b":
-        outputs = model.generate(prompt, max_new_tokens=max_new_tokens, return_dict=probs, temperature=temperature)
-
-        # print(outputs)
-
-        if isinstance(outputs, dict):
-            return outputs["generated_texts"][0], outputs["token_probs"][0]
-        else:
-            return outputs[0]
+        return model.generate(prompt, max_new_tokens=max_new_tokens, return_dict=probs, temperature=temperature)
     
     elif model_name == "chatgpt":
         response = openai.Completion.create(

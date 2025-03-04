@@ -7,6 +7,7 @@ import lm_utils
 import metrics
 from tqdm import tqdm
 
+BATCH_SIZE = 4
 
 def main():
     parser = argparse.ArgumentParser()
@@ -16,6 +17,7 @@ def main():
     parser.add_argument("-o", "--portion", default=1.0, type=float, help="Only use this fraction of dataset.")
     parser.add_argument("-l", "--local", default=False, action='store_true', help="If set, save local JSON of predictions.")
     parser.add_argument("-f", "--feedback", default=False, action='store_true', help="If set, save a separate file of generated feedback.")
+    parser.add_argument("-b", "--batch_size", type=int, default=BATCH_SIZE, help="Batch size for generation.")
     args = parser.parse_args()
 
     model_name = args.model
@@ -24,6 +26,7 @@ def main():
     portion = args.portion
     local_out = args.local
     feedback_out = args.feedback
+    batch_size = args.batch_size
 
     # Initialize model
     lm_utils.llm_init(model_name)
@@ -73,88 +76,94 @@ def main():
     answers_given = []
 
     print("1: Generating answers for each test question.")
-    for instance in tqdm(data["test"]):
+    test_prompts = []
+    for instance in data["test"]:
         prompt_text = f"Question: {instance['question']}\n"
         for choice_key, choice_text in instance["choices"].items():
             prompt_text += f"{choice_key}: {choice_text}\n"
         prompt_text += "Choose one answer from the above choices. Just provide the letter (A, B, C, or D) of the correct choice. The answer is"
-        answer_text = lm_utils.llm_response(
-            prompt_text, model_name,
-            probs=False,
-            max_new_tokens=10
-        )
+        test_prompts.append(prompt_text)
+    
+    answers_given = []
+    correct_flags = []
+    
+    for i in tqdm(range(0, len(test_prompts), batch_size)):
+        batch_prompts = test_prompts[i:i+batch_size]
+        # batch_answers: List[str] (batch_size, )
+        batch_answers = lm_utils.llm_response(batch_prompts, model_name, probs=False, max_new_tokens=10)
 
-        label = lm_utils.answer_parsing(answer_text, model_name)
-        if label == instance["answer"]:
-            correct_flags.append(1)
-        else:
-            correct_flags.append(0)
-
-        answers_given.append(answer_text)
-
+        for answer_text, instance in zip(batch_answers, data["test"][i:i+batch_size]):
+            label = lm_utils.answer_parsing(answer_text, model_name)
+            correct_flags.append(1 if label == instance["answer"] else 0)
+            answers_given.append(answer_text)
 
     print("\n2: Generating multilingual feedback for each answer.")
-    feedback1, feedback2, feedback3 = [], [], []
-
-    related_list = language_related.get(source_language, ["English","English","English"])
-
-    for i, instance in enumerate(tqdm(data["test"])):
+    feedback_prompts = []
+    feedback_instance_indices = []
+    feedback_language_indices = []
+    for i, instance in enumerate(data["test"]):
         base_prompt = f"Question: {instance['question']}\n"
         for ck, ct in instance["choices"].items():
-            base_prompt += (ck + ": " + ct + "\n")
-        base_prompt += (
-            f"Choose one answer from the above choices. Proposed answer: {answers_given[i].strip()}\n"
-            "Please review the proposed answer and provide a paragraph of feedback on its correctness."
-            " Feedback should be in <LANG>.\n"
-            "Feedback:"
-        )
-
-        fbs = []
+            base_prompt += f"{ck}: {ct}\n"
+        base_prompt += (f"Choose one answer from the above choices. Proposed answer: {answers_given[i].strip()}\n"
+                        "Please review the proposed answer and provide a paragraph of feedback on its correctness. "
+                        "Feedback should be in <LANG>.\nFeedback:")
+        related_list = language_related.get(source_language, ["English", "English", "English"])
         for lang_idx in range(3):
-            lang_prompt = base_prompt.replace("<LANG>", related_list[lang_idx])
-            feedback_resp = lm_utils.llm_response(
-                lang_prompt,
-                model_name,
-                probs=False,
-                temperature=1
-            )
-            if not feedback_resp.strip():
-                feedback_resp = "No feedback provided."
-            fbs.append(feedback_resp.split("\n")[0].strip())
+            prompt_lang = base_prompt.replace("<LANG>", related_list[lang_idx])
+            feedback_prompts.append(prompt_lang)
+            feedback_instance_indices.append(i)
+            feedback_language_indices.append(lang_idx)
 
-        feedback1.append(fbs[0])
-        feedback2.append(fbs[1])
-        feedback3.append(fbs[2])
+    feedback_responses = [None] * len(feedback_prompts)
+    for i in tqdm(range(0, len(feedback_prompts), batch_size)):
+        batch_prompts = feedback_prompts[i:i+batch_size]
+        # batch_feedback: List[str] (batch_size, )
+        batch_feedback = lm_utils.llm_response(batch_prompts, model_name, probs=False, temperature=1.0)
+
+        feedback_responses[i:i+batch_size] = batch_feedback
+
+    feedback1 = [None] * len(data["test"])
+    feedback2 = [None] * len(data["test"])
+    feedback3 = [None] * len(data["test"])
+    for idx, resp in enumerate(feedback_responses):
+        inst_idx = feedback_instance_indices[idx]
+        lang_idx = feedback_language_indices[idx]
+        cleaned_resp = resp.split("\n")[0].strip() if resp.strip() else "No feedback provided."
+        if lang_idx == 0:
+            feedback1[inst_idx] = cleaned_resp
+        elif lang_idx == 1:
+            feedback2[inst_idx] = cleaned_resp
+        elif lang_idx == 2:
+            feedback3[inst_idx] = cleaned_resp
 
     print("\n3: Make abstain decision based on feedback.")
-    abstain_flags = []
-    abstain_scores = []
-
     final_prompts = []
     for i, instance in enumerate(data["test"]):
-        combined_prompt = (
-            f"Question: {instance['question']}\n"
-        )
+        combined_prompt = f"Question: {instance['question']}\n"
         for ck, ct in instance["choices"].items():
             combined_prompt += f"{ck}: {ct}\n"
-
-        combined_prompt += (
-            f"Choose one answer. Proposed answer: {answers_given[i].strip()}\n\n"
-            f"Feedback 1: {feedback1[i].strip()}\n\n"
-            f"Feedback 2: {feedback2[i].strip()}\n\n"
-            f"Feedback 3: {feedback3[i].strip()}\n\n"
-            "Based on the feedback, is the proposed answer True or False? Please respond clearly with 'True' or 'False'."
-        )
+        combined_prompt += (f"Choose one answer. Proposed answer: {answers_given[i].strip()}\n\n"
+                             f"Feedback 1: {feedback1[i].strip()}\n\n"
+                             f"Feedback 2: {feedback2[i].strip()}\n\n"
+                             f"Feedback 3: {feedback3[i].strip()}\n\n"
+                             "Based on the feedback, is the proposed answer True or False? "
+                             "Please respond clearly with 'True' or 'False'.")
         final_prompts.append(combined_prompt)
 
-    # Now call the LLM again for each final prompt, parse True/False
-    for final_prompt in tqdm(final_prompts):
-        resp, probs_dict = lm_utils.llm_response(
-            final_prompt,
-            model_name,
-            probs=True,
-            max_new_tokens=10
-        )
+    final_responses = []
+    final_probs = []
+    for i in tqdm(range(0, len(final_prompts), batch_size)):
+        batch_prompts = final_prompts[i:i+batch_size]
+        batch_outputs = lm_utils.llm_response(batch_prompts, model_name, probs=True, max_new_tokens=10)
+        batch_generated_texts = batch_outputs["generated_texts"]  # List[str] (batch_size, )
+        batch_token_probs = batch_outputs["token_probs"]  # List[Dict[str, float]] (batch_size, (seq_len, ))
+        final_responses.extend(batch_generated_texts)
+        final_probs.extend(batch_token_probs)
+
+    abstain_flags = []
+    abstain_scores = []
+    for resp, probs_dict in zip(final_responses, final_probs):
         predicted_label = lm_utils.answer_parsing(resp, model_name)
         if predicted_label == "A":
             abstain_flags.append(0)
@@ -162,7 +171,6 @@ def main():
             abstain_flags.append(1)
         else:
             abstain_flags.append(random.randint(0, 1))
-
         found_score = 0.5
         if probs_dict is not None:
             prob_true = None
@@ -174,9 +182,9 @@ def main():
                 elif norm_k == "false":
                     prob_false = pval
             if prob_true is not None and prob_false is not None:
-                if predicted_label == "True" and prob_true is not None:
+                if predicted_label.lower() == "true":
                     found_score = 1 - prob_true
-                elif predicted_label == "False" and prob_false is not None:
+                elif predicted_label.lower() == "false":
                     found_score = prob_false
         abstain_scores.append(found_score)
 
