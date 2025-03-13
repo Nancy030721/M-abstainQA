@@ -103,10 +103,6 @@ def main():
             feedback2[inst_idx] = cleaned_resp
         elif lang_idx == 2:
             feedback3[inst_idx] = cleaned_resp
-    
-    print("!!!!!feedback1", feedback1)
-    print("!!!!!feedback2", feedback2)
-    print("!!!!!feedback3", feedback3)
 
     print("\n3: Make abstain decision based on feedback.")
     final_prompts = []
@@ -125,7 +121,6 @@ def main():
     final_responses = []
     final_probs = []
 
-    print("!!!!!final_prompts", final_prompts)
     # Now call the LLM again for each final prompt, parse True/False
     for i in tqdm(range(0, len(final_prompts), BATCH_SIZE)):
         batch_prompts = final_prompts[i:i+BATCH_SIZE]
