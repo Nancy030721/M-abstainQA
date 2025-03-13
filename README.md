@@ -119,3 +119,17 @@ Make sure that your engine directory is properly set in [lm_utils.py](https://gi
 ```bash
 python multirelated_batched.py -m aya_13b -d mmlu -s bn -o 0.1 -l -f
 ```
+
+## Results: MMLU Test Data Abstain Rate
+Below is a comparison of our reproduced abstain rates with the original results from the paper.
+
+| Language  | Code | MultiRandom (Ours) | MultiRelated (Ours) | MultiRandom (Original) | MultiRelated (Original) | Difference (MultiRelated) |
+|-----------|------|--------------------|---------------------|------------------------|-------------------------|---------------------------|
+| Bengali   | bn   | 0.552              | 0.661               | 0.597                  | 0.621                   | **+0.040**                |
+| Kannada   | kn   | 0.475              | 0.646               | 0.615                  | 0.704                   | **-0.058**                |
+| Malayalam | ml   | 0.388              | 0.642               | 0.561                  | 0.595                   | **+0.047**                |
+| Marathi   | mr   | 0.536              | 0.461               | 0.524                  | 0.661                   | **-0.200**                |
+| Nepali    | ne   | 0.462              | 0.345               | 0.549                  | 0.590                   | **-0.245**                |
+| Tamil     | ta   | 0.570              | 0.732               | 0.628                  | 0.643                   | **+0.089**                |
+| Telugu    | te   | 0.433              | 0.491               | 0.605                  | 0.628                   | **-0.137**                |
+| **Average** | -  | **0.484**  | **0.568**          | **0.583**           | **0.635**   | **-0.067**
