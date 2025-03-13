@@ -14,7 +14,7 @@ class LLM:
         self.tokenizer = AutoTokenizer.from_pretrained(model)
         self.config = AutoConfig.from_pretrained(model)
 
-    def generate(self, prompts, max_new_tokens=64, return_dict=False, temperature=1.0, num_beams=1):
+    def generate(self, prompts, max_new_tokens=64, return_dict=False, temperature=1.0, repetition_penalty=1.0, num_beams=1):
         tokenized = self.tokenizer(prompts, return_tensors="pt", padding=True)
         input_ids = tokenized.input_ids.to("cuda").type(torch.int32)
 
@@ -33,6 +33,7 @@ class LLM:
             debug_mode=self.debug_mode,
             return_dict=return_dict,
             temperature=temperature,
+            repetition_penalty=repetition_penalty
         )
         if isinstance(outputs, dict):
             output_ids = outputs["output_ids"][:, 0, :] # (batch_size, seq_len)

@@ -425,6 +425,7 @@ class EncDecModelRunner:
                  debug_mode=False,
                  return_dict=False,
                  temperature=1.0,
+                 repetition_penalty=1.0,
                  prompt_embedding_table=None,
                  prompt_tasks=None,
                  prompt_vocab_size=None,
@@ -495,7 +496,8 @@ class EncDecModelRunner:
                                          num_beams=num_beams,
                                          min_length=1,
                                          return_dict=return_dict,
-                                         temperature=temperature)
+                                         temperature=temperature,
+                                         repetition_penalty=repetition_penalty)
         
         sampling_config.update(output_cum_log_probs=return_dict,
                                output_log_probs=return_dict)

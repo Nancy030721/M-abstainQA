@@ -93,8 +93,8 @@ trtllm-build --checkpoint_dir /data/aya-101-trt-bf16/encoder \
                 --moe_plugin disable \
                 --max_beam_width 1 \
                 --max_batch_size 4 \
-                --max_input_len 3840 \ 
-                --max_num_tokens 4096 \ # Sizes fits for batch_size=4, max_new_tokens=200, single H100 serving
+                --max_input_len 4864 \ 
+                --max_num_tokens 5120 \ # Sizes fits for batch_size=4, max_new_tokens=200, single H100 serving
                 --gemm_plugin ${INFERENCE_PRECISION} \
                 --bert_attention_plugin ${INFERENCE_PRECISION} \
                 --gpt_attention_plugin ${INFERENCE_PRECISION} \
@@ -108,7 +108,7 @@ trtllm-build --checkpoint_dir /data/aya-101-trt-bf16/decoder \
                 --max_batch_size 4 \
                 --max_input_len 1 \
                 --max_seq_len 201 \
-                --max_encoder_input_len 3840 \  # Match with encoder
+                --max_encoder_input_len 4864 \  # Match with encoder
                 --gemm_plugin ${INFERENCE_PRECISION} \
                 --bert_attention_plugin ${INFERENCE_PRECISION} \
                 --gpt_attention_plugin ${INFERENCE_PRECISION} \

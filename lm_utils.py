@@ -28,14 +28,11 @@ def llm_init(model_name):
     print("init model")
     if model_name == "aya_13b":
         device = "cuda"
-        model = LLM(model="CohereForAI/aya-101", engine_dir="/data/aya-101-trt-bf16-engine-m/")
+        model = LLM(model="/data/aya-101", engine_dir="/data/aya-101-trt-bf16-engine-m/")
     
     if model_name == "chatgpt" or model_name == "gpt4":
         openai.api_key = os.getenv("OPENAI_API_KEY")
 
-    # if model_name == "gemini":
-    #     GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
-    #     genai.configure(api_key=GOOGLE_API_KEY)
 
 def wipe_model():
     global device
@@ -49,32 +46,11 @@ def wipe_model():
     del pipeline
 
 @retry(wait=wait_random_exponential(min=1, max=20), stop=stop_after_attempt(10))
-def llm_response(prompt, model_name, probs = False, temperature = 0.1, max_new_tokens = 200):
+def llm_response(prompt, model_name, probs = False, temperature = 0.1, repetition_penalty=1.0, max_new_tokens = 200):
     global model
-    # if model_name == "gemini":
-    #     model = genai.GenerativeModel("models/gemini-1.5-flash-001")
-    #     response = model.generate_content(
-    #         prompt,
-    #         generation_config=genai.types.GenerationConfig(
-    #             temperature=temperature,
-    #             max_output_tokens=max_new_tokens
-    #         )
-    #     )
-        
-    #     if not response.candidates or not response.candidates[0].content.parts:
-    #             print("Gemini blocked a response due to content moderation.")
-    #             return "Error: Gemini blocked the response due to content moderation."
-
-    #     generated_text = response.text.strip()
-    #     token_probs = {}  # Gemini does not return token probabilities?
-
-    #     if probs:
-    #         return generated_text, token_probs
-    #     else:
-    #         return generated_text
         
     if model_name == "aya_13b":
-        return model.generate(prompt, max_new_tokens=max_new_tokens, return_dict=probs, temperature=temperature)
+        return model.generate(prompt, max_new_tokens=max_new_tokens, return_dict=probs, temperature=temperature, repetition_penalty=repetition_penalty)
     
     elif model_name == "chatgpt":
         response = openai.Completion.create(
@@ -95,7 +71,7 @@ def llm_response(prompt, model_name, probs = False, temperature = 0.1, max_new_t
     
     elif model_name == "gpt4":
         response = openai.ChatCompletion.create(
-                    model="gpt-4-turbo",
+                    model="gpt-4o-mini-2024-07-18",
                     temperature=temperature,
                     messages=[
                         {"role": "user", "content": prompt}
@@ -108,20 +84,11 @@ def llm_response(prompt, model_name, probs = False, temperature = 0.1, max_new_t
         for thing in response['choices'][0]['logprobs']["content"]:
             token_probs[thing["token"]] = np.exp(thing["logprob"])
         if probs:
-            return response['choices'][0]['message']['content'].strip(), token_probs
+            return {"generated_texts": response['choices'][0]['message']['content'].strip(), "token_probs": token_probs}
         else:
             return response['choices'][0]['message']['content'].strip()
     
 def answer_parsing(response, model_name):
-    # parsing special gemini answers
-    # if model_name == "gemini":
-    #     temp = response.lower().strip().split(" ")
-    #     if temp[0] == "Error: ": # for content moderated response from Gemini
-    #         return "Z" # so that its absolutely wrong
-    #     for option in ["**a", "**b", "**c", "**d", "**e"]:
-    #         for i in range(len(temp)):
-    #             if option in temp[i]:
-    #                 return option.replace("**", "").upper()
     # mode 1: answer directly after
     temp = response.strip().split(" ")
     for option in ["A", "B", "C", "D", "E"]:
