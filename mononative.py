@@ -199,7 +199,7 @@ def main():
                 "abstain_flag": abstain_flags[idx],
                 "correct_flag": correct_flags[idx]
             })
-        path_feedback = f"feedbacks/{model_name}_{dataset_name}_{speak}_mononative_batched.json"
+        path_feedback = f"feedbacks/{model_name}_{dataset_name}_{speak}_mononative.json"
         with open(path_feedback, "w", encoding="utf-8") as ff:
             json.dump(feedback_data, ff, indent=4, ensure_ascii=False)
         print(f"[Saved feedbacks to {path_feedback}]")
@@ -210,12 +210,12 @@ def main():
             "abstain_flags": abstain_flags,
             "abstain_scores": abstain_scores
         }
-        out_path = f"preds/{model_name}_{dataset_name}_{speak}_mononative_batched.json"
+        out_path = f"preds/{model_name}_{dataset_name}_{speak}_mononative.json"
         with open(out_path, "w", encoding="utf-8") as ff:
             json.dump(out_data, ff, indent=2, ensure_ascii=False)
         print(f"[Local output saved to {out_path}]")
 
-    print("-" * 10, "MonoNative Batched", "-" * 10)
+    print("-" * 10, "MonoNative", "-" * 10)
     print("Approach:", "mononative")
     print("Model:", model_name)
     print("Dataset:", dataset_name)
@@ -225,7 +225,7 @@ def main():
     print("Metrics:", final_scores)
 
     if result_out:
-        result_path = f"results/{model_name}_{dataset_name}_{speak}_mononative_batched.json"
+        result_path = f"results/{model_name}_{dataset_name}_{speak}_mononative.json"
         with open(result_path, "w", encoding="utf-8") as rf:
             json.dump(final_scores, rf, indent=2, ensure_ascii=False)
         print(f"[Saved result metrics to {result_path}]")
