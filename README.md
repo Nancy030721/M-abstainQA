@@ -120,7 +120,8 @@ Make sure that your engine directory is properly set in [lm_utils.py](https://gi
 python multirelated_batched.py -m aya_13b -d mmlu -s bn -o 0.1 -l -f
 ```
 
-## Results: MMLU Test Data Abstain Rate
+## Results: 
+### MMLU Test Data Abstain Rate with Aya-13B
 Below is a comparison of our reproduced abstain rates with the original results from the paper.
 
 | Language  | Code |MonoEnglish (Ours)|MonoNative (Ours)|MultiRandom (Ours)|MultiRelated (Ours)|MonoEnglish (Original)|MonoNative (Original) |MultiRandom (Original)|MultiRelated (Original)|Difference (MultiRelated)|
@@ -133,3 +134,18 @@ Below is a comparison of our reproduced abstain rates with the original results 
 | Tamil     | ta | 0.311 | 0.309 | 0.570 | 0.732 | 0.533 | 0.594 | 0.628 | 0.643  | **+0.089**  |
 | Telugu    | te | 0.347 | 0.332 | 0.433 | 0.491 | 0.520 | 0.688 | 0.605 | 0.628  | **-0.137**  |
 | **Average** | -  | **0.347** | **0.347** | **0.484** | **0.568** | **0.551** | **0.599** | **0.583** | **0.635** | **-0.067**
+
+### Hellaswag Test Data Abstain Rate with Aya-13B
+Below is a comparison of our reproduced abstain rates with the original results from the paper.
+
+| Language  | Code |MonoEnglish (Ours)|MonoNative (Ours)|MultiRandom (Ours)|MultiRelated (Ours)|MonoEnglish (Original)|MonoNative (Original) |MultiRandom (Original)|MultiRelated (Original)|Difference (MultiRelated)|
+|-|-|-|-|-|-|-|-|-|-|-|
+| Bengali   | bn | 0.549 | 0.537 | 0.532 | 0.540 | 0.513 | 0.578 | 0.403 | 0.468  | **+0.072**  |
+| Kannada   | kn | 0.469 | 0.464 | 0.551 | 0.528 | 0.572 | 0.526 | 0.553 | 0.566  | **-0.038**  |
+| Malayalam | ml | 0.453 | 0.410 | 0.499 | 0.560 | 0.513 | 0.467 | 0.627 | 0.693  | **-0.133**  |
+| Marathi   | mr | 0.506 | 0.513 | 0.549 | 0.525 | 0.506 | 0.481 | 0.565 | 0.578  | **-0.053**  |
+| Nepali    | ne | 0.488 | 0.490 | 0.546 | 0.508 | 0.503 | 0.452 | 0.497 | 0.542  | **-0.034**  |
+| Tamil     | ta | 0.476 | 0.406 | 0.559 | 0.593 | 0.514 | 0.479 | 0.650 | 0.636  | **-0.043**  |
+| Telugu    | te | 0.488 | 0.472 | 0.512 | 0.537 | 0.565 | 0.524 | 0.565 | 0.558  | **-0.021**  |
+| **Average** | -  | **0.490** | **0.470** | **0.535** | **0.542** | **0.527** | **0.501** | **0.551** | **0.577** | **-0.035**
+
