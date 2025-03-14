@@ -121,7 +121,7 @@ def main():
     for i in tqdm(range(0, len(feedback_prompts), batch_size)):
         batch_prompts = feedback_prompts[i:i+batch_size]
         # batch_feedback: List[str] (batch_size, )
-        batch_feedback = lm_utils.llm_response(batch_prompts, model_name, probs=False, temperature=0.8, repetition_penalty=1.1)
+        batch_feedback = lm_utils.llm_response(batch_prompts, model_name, probs=False, temperature=0.7, repetition_penalty=1.1)
 
         feedback_responses[i:i+batch_size] = batch_feedback
 
@@ -206,10 +206,11 @@ def main():
                 "correct_flag": correct_flags[idx]
             })
 
-        path_feedback = f"feedbacks/{model_name}_{dataset_name}_{source_language}_multirelated.json"
-        with open(path_feedback, "w", encoding="utf-8") as ff:
+        feedback_dir = f"feedbacks/{dataset_name}/multirelated"
+        feedback_path = f"{feedback_dir}/{model_name}_{dataset_name}_{source_language}_multirelated.json"
+        with open(feedback_path, "w", encoding="utf-8") as ff:
             json.dump(feedback_data, ff, indent=4, ensure_ascii=False)
-        print(f"[Saved feedbacks to {path_feedback}]")
+        print(f"[Saved feedbacks to {feedback_path}]")
 
     # Save predictions to a file if specified
     if local_out:
@@ -218,7 +219,8 @@ def main():
             "abstain_flags": abstain_flags,
             "abstain_scores": abstain_scores
         }
-        out_path = f"preds/{model_name}_{dataset_name}_{source_language}_multirelated.json"
+        out_dir = f"preds/{dataset_name}/multirelated"
+        out_path = f"{out_dir}/{model_name}_{dataset_name}_{source_language}_multirelated.json"
         with open(out_path, "w", encoding="utf-8") as ff:
             json.dump(out_data, ff, indent=2, ensure_ascii=False)
         print(f"[Local output saved to {out_path}]")
@@ -232,7 +234,8 @@ def main():
     print("Metrics:", final_scores)
 
     if result_out:
-        result_path = f"results/{model_name}_{dataset_name}_{source_language}_multirelated.json"
+        result_dir = f"results/{dataset_name}/multirelated"
+        result_path = f"{result_dir}/{model_name}_{dataset_name}_{source_language}_multirelated.json"
         with open(result_path, "w", encoding="utf-8") as rf:
             json.dump(final_scores, rf, indent=2, ensure_ascii=False)
         print(f"[Saved result metrics to {result_path}]")

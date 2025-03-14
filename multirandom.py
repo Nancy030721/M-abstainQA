@@ -87,7 +87,7 @@ def main():
     feedback_responses = [None] * len(feedback_prompts)
     for i in tqdm(range(0, len(feedback_prompts), BATCH_SIZE)):
         batch_prompts = feedback_prompts[i:i+BATCH_SIZE]
-        batch_feedback = lm_utils.llm_response(batch_prompts, model_name, probs=False, temperature=1, max_new_tokens=100, repetition_penalty=1.1)
+        batch_feedback = lm_utils.llm_response(batch_prompts, model_name, probs=False, temperature=0.7, max_new_tokens=100, repetition_penalty=1.1)
         feedback_responses[i:i+BATCH_SIZE] = batch_feedback
 
     feedback1 = [None] * len(data["test"])
@@ -171,10 +171,11 @@ def main():
                 "abstain_flag": abstain_flags[idx],
                 "correct_flag": correct_flags[idx]
             })
-        path_feedback = f"feedbacks/{model_name}_{dataset_name}_{source_language}_multirandom.json"
-        with open(path_feedback, "w", encoding="utf-8") as ff:
+        feedback_dir = f"feedbacks/{dataset_name}/multirandom"
+        feedback_path = f"{feedback_dir}/{model_name}_{dataset_name}_{source_language}_multirandom.json"
+        with open(feedback_path, "w", encoding="utf-8") as ff:
             json.dump(feedback_data, ff, indent=4, ensure_ascii=False)
-        print(f"[Saved feedbacks to {path_feedback}]")
+        print(f"[Saved feedbacks to {feedback_path}]")
 
     # Save predictions to a file if specified
     if local_out:
@@ -183,7 +184,8 @@ def main():
             "abstain_flags": abstain_flags,
             "abstain_scores": abstain_scores
         }
-        out_path = f"preds/{model_name}_{dataset_name}_{source_language}_multirandom.json"
+        out_dir = f"preds/{dataset_name}/multirandom"
+        out_path = f"{out_dir}/{model_name}_{dataset_name}_{source_language}_multirandom.json"
         with open(out_path, "w", encoding="utf-8") as ff:
             json.dump(out_data, ff, indent=2, ensure_ascii=False)
         print(f"[Local output saved to {out_path}]")
@@ -196,7 +198,8 @@ def main():
     print("Metrics:", final_scores)
 
     if result_out:
-        result_path = f"results/{model_name}_{dataset_name}_{source_language}_multirandom.json"
+        result_dir = f"results/{dataset_name}/multirandom"
+        result_path = f"{result_dir}/{model_name}_{dataset_name}_{source_language}_multirandom.json"
         with open(result_path, "w", encoding="utf-8") as rf:
             json.dump(final_scores, rf, indent=2, ensure_ascii=False)
         print(f"[Saved result metrics to {result_path}]")
