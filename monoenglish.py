@@ -3,36 +3,16 @@
 import json
 import argparse
 import random
+import time
 import lm_utils
 import metrics
 from tqdm import tqdm
+import os
 
 BATCH_SIZE = 4
 
-def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("-m", "--model", required=True, help="Which language model to use.")
-    parser.add_argument("-d", "--dataset", required=True, help="Dataset to run on (mmlu, hellaswag, belebele, etc.).")
-    parser.add_argument("-s", "--speak", required=True, help="Primary language code, e.g. 'en', 'es', etc.")
-    parser.add_argument("-o", "--portion", default=1.0, type=float, help="Only use this fraction of dataset.")
-    parser.add_argument("-l", "--local", default=False, action='store_true', help="If set, save local JSON of predictions.")
-    parser.add_argument("-f", "--feedback", default=False, action='store_true', help="If set, save a separate file of generated feedback.")
-    parser.add_argument("-r", "--result", default=False, action='store_true', help="If set, save result metrics to a local JSON file.")
-    parser.add_argument("-b", "--batch_size", type=int, default=BATCH_SIZE, help="Batch size for generation.")
-    args = parser.parse_args()
-
-    model_name = args.model
-    dataset_name = args.dataset
-    source_language = args.speak
-    portion = args.portion
-    local_out = args.local
-    feedback_out = args.feedback
-    result_out = args.result
-    batch_size = args.batch_size
-
-    lm_utils.llm_init(model_name)
-
-    filepath = f"data/{dataset_name}/{dataset_name}_{source_language}.json"
+def run_pipeline(model_name, dataset_name, speak, portion, local_out, feedback_out, result_out, batch_size):
+    filepath = f"data/{dataset_name}/{dataset_name}_{speak}.json"
     with open(filepath, "r", encoding="utf-8") as f:
         data = json.load(f)
 
@@ -130,10 +110,10 @@ def main():
                     prob_true = pval
                 elif norm_k == "false":
                     prob_false = pval
-            if prob_true is not None and prob_false is not None:
-                if predicted_label.lower() == "true":
+            if prob_true is not None or prob_false is not None:
+                if predicted_label == "A":
                     found_score = 1 - prob_true
-                elif predicted_label.lower() == "false":
+                elif predicted_label == "B":
                     found_score = prob_false
         abstain_scores.append(found_score)
 
@@ -151,7 +131,8 @@ def main():
                 "correct_flag": correct_flags[idx]
             })
         feedback_dir = f"feedbacks/{dataset_name}/monoenglish"
-        feedback_path = f"{feedback_dir}/{model_name}_{dataset_name}_{source_language}_monoenglish.json"
+        os.makedirs(feedback_dir, exist_ok=True)
+        feedback_path = f"{feedback_dir}/{model_name}_{dataset_name}_{speak}_monoenglish.json"
         with open(feedback_path, "w", encoding="utf-8") as ff:
             json.dump(feedback_data, ff, indent=4, ensure_ascii=False)
         print(f"[Saved feedbacks to {feedback_path}]")
@@ -163,7 +144,8 @@ def main():
             "abstain_scores": abstain_scores
         }
         out_dir = f"preds/{dataset_name}/monoenglish"
-        out_path = f"{out_dir}/{model_name}_{dataset_name}_{source_language}_monoenglish.json"
+        os.makedirs(out_dir, exist_ok=True)
+        out_path = f"{out_dir}/{model_name}_{dataset_name}_{speak}_monoenglish.json"
         with open(out_path, "w", encoding="utf-8") as ff:
             json.dump(out_data, ff, indent=2, ensure_ascii=False)
         print(f"[Local output saved to {out_path}]")
@@ -171,16 +153,46 @@ def main():
     print("-" * 10, "Mono-English", "-" * 10)
     print("Model:", model_name)
     print("Dataset:", dataset_name)
-    print("Language:", source_language)
+    print("Language:", speak)
     final_scores = metrics.compute_metrics(correct_flags, abstain_flags, abstain_scores)
     print("Metrics:", final_scores)
 
     if result_out:
         result_dir = f"results/{dataset_name}/monoenglish"
-        result_path = f"{result_dir}/{model_name}_{dataset_name}_{source_language}_monoenglish.json"
+        os.makedirs(result_dir, exist_ok=True)
+        result_path = f"{result_dir}/{model_name}_{dataset_name}_{speak}_monoenglish.json"
         with open(result_path, "w", encoding="utf-8") as rf:
             json.dump(final_scores, rf, indent=2, ensure_ascii=False)
         print(f"[Saved result metrics to {result_path}]")
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-m", "--model", required=True, help="Which language model to use.")
+    parser.add_argument("-d", "--dataset", required=True, help="Dataset to run on (mmlu, hellaswag, belebele, etc.).")
+    parser.add_argument("-s", "--speak", default="en", help="Primary language code, e.g. 'en', 'es', etc.")
+    parser.add_argument("-o", "--portion", default=1.0, type=float, help="Only use this fraction of dataset.")
+    parser.add_argument("-l", "--local", default=False, action='store_true', help="If set, save local JSON of predictions.")
+    parser.add_argument("-f", "--feedback", default=False, action='store_true', help="If set, save a separate file of generated feedback.")
+    parser.add_argument("-r", "--result", default=False, action='store_true', help="If set, save result metrics to a local JSON file.")
+    parser.add_argument("-b", "--batch_size", type=int, default=BATCH_SIZE, help="Batch size for generation.")
+    parser.add_argument("--test-all", action="store_true", help="If specified, run all test languages (e.g. 'en', 'es', 'fr', 'de', 'ru', 'it', 'zh') sequentially.")
+    args = parser.parse_args()
+    print("Arguments:", args)
+    
+    start_time = time.time()
+
+    # init model
+    lm_utils.llm_init(args.model)
+
+    if args.test_all:
+        test_languages = ["bn", "kn", "ml", "mr", "ne", "ta", "te"]
+        for lang in test_languages:
+            print(f"\n===== Running test for language: {lang} =====")
+            run_pipeline(args.model, args.dataset, lang, args.portion, args.local, args.feedback, args.result, args.batch_size)
+    else:
+        run_pipeline(args.model, args.dataset, args.speak, args.portion, args.local, args.feedback, args.result, args.batch_size)
+
+    print(f"Total time taken: {time.time() - start_time:.2f} seconds")
 
 if __name__ == "__main__":
     main()

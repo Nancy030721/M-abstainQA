@@ -1,21 +1,12 @@
 from tqdm import tqdm
 import torch
-import openai
-import os
 import time
 import numpy as np
 import time
+import os
 import wikipedia as wp
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
-from tenacity import (
-    retry,
-    stop_after_attempt,
-    wait_random_exponential,
-)  # for exponential backoff
 
-from llm import LLM
-
-# import google.generativeai as genai #for gemini
 
 device = "cuda"
 
@@ -23,70 +14,103 @@ def llm_init(model_name):
     global device
     global model
     global pipeline
+    global openai_client
 
     
     print("init model")
     if model_name == "aya_13b":
         device = "cuda"
-        model = LLM(model="/data/aya-101", engine_dir="/data/aya-101-trt-bf16-engine-m/")
+        from enc_dec_model import EncDecModel
+        model = EncDecModel(model="/data/aya-101", engine_dir="/data/aya-101-trt-bf16-engine-m/")
     
-    if model_name == "chatgpt" or model_name == "gpt4":
-        openai.api_key = os.getenv("OPENAI_API_KEY")
+    if model_name == "gpt4":
+        from openai import OpenAI
+        openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
+    if model_name == "gemma":
+        device = "cuda"
+        os.environ["VLLM_ATTENTION_BACKEND"] = "flashinfer"
+        os.environ["VLLM_USE_FLASHINFER_SAMPLER"] = "1"
+        from vllm import LLM
+        model = LLM(model="/data/gemma-3-27b-it",  tensor_parallel_size=4)
 
 
 def wipe_model():
     global device
     global model
     global pipeline
+    global openai_client
     device = None
     model = None
     pipeline = None
+    openai_client = None
     del device
     del model
     del pipeline
+    del openai_client
 
-@retry(wait=wait_random_exponential(min=1, max=20), stop=stop_after_attempt(10))
-def llm_response(prompt, model_name, probs = False, temperature = 0.1, repetition_penalty=1.0, max_new_tokens = 200):
+def llm_response(prompt, model_name, probs = False, temperature = 1.0, repetition_penalty=1.0, max_new_tokens = 200):
     global model
-        
+
     if model_name == "aya_13b":
         return model.generate(prompt, max_new_tokens=max_new_tokens, return_dict=probs, temperature=temperature, repetition_penalty=repetition_penalty)
-    
-    elif model_name == "chatgpt":
-        response = openai.Completion.create(
-            model="gpt-3.5-turbo-instruct",
-            prompt=prompt,
+
+    elif model_name == "gemma":
+        from vllm import SamplingParams
+
+        sampling_params = SamplingParams(
             temperature=temperature,
             max_tokens=max_new_tokens,
-            logprobs=1,
+            repetition_penalty=repetition_penalty,
+            logprobs=1 if probs else None
         )
-        time.sleep(0.1)
-        token_probs = {}
-        for tok, score in zip(response.choices[0].logprobs.tokens, response.choices[0].logprobs.token_logprobs):
-            token_probs[tok] = np.exp(score)
+
+        responses = model.generate(prompt, sampling_params)
+
+        generated_texts = []
+        token_probs_list = []
+        for response in responses:
+            gen_text = response.outputs[0].text.strip()
+            generated_texts.append(gen_text)
+
+            token_probs = {}
+            if probs and response.outputs[0].logprobs is not None:
+                for logprob_dict in response.outputs[0].logprobs:
+                    for _, logprob_obj in logprob_dict.items():
+                        token = logprob_obj.decoded_token
+                        token_probs[token] = np.exp(logprob_obj.logprob)
+            token_probs_list.append(token_probs)
+
         if probs:
-            return response.choices[0].text, token_probs
+            return {"generated_texts": generated_texts, "token_probs": token_probs_list}
         else:
-            return response.choices[0].text
-    
+            return generated_texts
+
     elif model_name == "gpt4":
-        response = openai.ChatCompletion.create(
-                    model="gpt-4o-mini-2024-07-18",
-                    temperature=temperature,
-                    messages=[
-                        {"role": "user", "content": prompt}
-                    ],
-                    max_tokens=max_new_tokens,
-                    logprobs=True,
-                )
-        time.sleep(0.1)
-        token_probs = {}
-        for thing in response['choices'][0]['logprobs']["content"]:
-            token_probs[thing["token"]] = np.exp(thing["logprob"])
+        generated_texts = []
+        token_probs_list = []
+        for single_prompt in prompt:
+            response = openai_client.chat.completions.create(
+                model="gpt-4o-mini-2024-07-18",
+                temperature=temperature,
+                messages=[
+                    {"role": "user", "content": single_prompt}
+                ],
+                max_tokens=max_new_tokens,
+                logprobs=True,
+            )
+            time.sleep(0.1)
+            token_probs = {}
+            for token_log in response.choices[0].logprobs.content:
+                token_probs[token_log.token] = np.exp(token_log.logprob)
+            generated_text = response.choices[0].message.content.strip()
+            generated_texts.append(generated_text)
+            token_probs_list.append(token_probs)
+
         if probs:
-            return {"generated_texts": response['choices'][0]['message']['content'].strip(), "token_probs": token_probs}
+            return {"generated_texts": generated_texts, "token_probs": token_probs_list}
         else:
-            return response['choices'][0]['message']['content'].strip()
+            return generated_texts
     
 def answer_parsing(response, model_name):
     # mode 1: answer directly after
@@ -136,10 +160,6 @@ def answer_parsing(response, model_name):
     return "Z" # so that its absolutely wrong
 
 prompt = "Question: Who is the 44th president of the United States?\nAnswer:"
-
-# llm_init("aya_13b")
-# answer = llm_response(prompt, "aya_13b", probs=False)
-# print(answer)
 
 text_classifier = None
 

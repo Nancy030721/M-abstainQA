@@ -1,38 +1,16 @@
 #!/usr/bin/env python3
-
 import json
 import argparse
 import random
+import time
 import lm_utils
 import metrics
 from tqdm import tqdm
+import os
 
 BATCH_SIZE = 4
 
-def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("-m", "--model", required=True, help="Which language model to use.")
-    parser.add_argument("-d", "--dataset", required=True, help="Dataset to run on (mmlu, hellaswag, belebele, etc.).")
-    parser.add_argument("-s", "--speak", required=True, help="Primary language code, e.g. 'bn', 'es', 'nl', etc.")
-    parser.add_argument("-o", "--portion", default=1.0, type=float, help="Only use this fraction of dataset.")
-    parser.add_argument("-l", "--local", default=False, action='store_true', help="If set, save local JSON of predictions.")
-    parser.add_argument("-f", "--feedback", default=False, action='store_true', help="If set, save a separate file of generated feedback.")
-    parser.add_argument("-r", "--result", default=False, action='store_true', help="If set, save result metrics to a local JSON file.")
-    parser.add_argument("-b", "--batch_size", type=int, default=BATCH_SIZE, help="Batch size for generation.")
-    args = parser.parse_args()
-
-    model_name = args.model
-    dataset_name = args.dataset
-    source_language = args.speak
-    portion = args.portion
-    local_out = args.local
-    feedback_out = args.feedback
-    result_out = args.result
-    batch_size = args.batch_size
-
-    # Initialize model
-    lm_utils.llm_init(model_name)
-
+def run_pipeline(model_name, dataset_name, source_language, portion, local_out, feedback_out, result_out, batch_size):
     # 3 related languages for each target language
     language_related = {
         "en": ["German", "Dutch", "French"],
@@ -85,15 +63,11 @@ def main():
             prompt_text += f"{choice_key}: {choice_text}\n"
         prompt_text += "Choose one answer from the above choices. Just provide the letter (A, B, C, or D) of the correct choice. The answer is"
         test_prompts.append(prompt_text)
-    
-    answers_given = []
-    correct_flags = []
-    
+
     for i in tqdm(range(0, len(test_prompts), batch_size)):
         batch_prompts = test_prompts[i:i+batch_size]
         # batch_answers: List[str] (batch_size, )
         batch_answers = lm_utils.llm_response(batch_prompts, model_name, probs=False, max_new_tokens=10)
-
         for answer_text, instance in zip(batch_answers, data["test"][i:i+batch_size]):
             label = lm_utils.answer_parsing(answer_text, model_name)
             correct_flags.append(1 if label == instance["answer"] else 0)
@@ -122,7 +96,6 @@ def main():
         batch_prompts = feedback_prompts[i:i+batch_size]
         # batch_feedback: List[str] (batch_size, )
         batch_feedback = lm_utils.llm_response(batch_prompts, model_name, probs=False, temperature=0.7, repetition_penalty=1.1)
-
         feedback_responses[i:i+batch_size] = batch_feedback
 
     feedback1 = [None] * len(data["test"])
@@ -183,10 +156,10 @@ def main():
                     prob_true = pval
                 elif norm_k == "false":
                     prob_false = pval
-            if prob_true is not None and prob_false is not None:
-                if predicted_label.lower() == "true":
+            if prob_true is not None or prob_false is not None:
+                if predicted_label == "A":
                     found_score = 1 - prob_true
-                elif predicted_label.lower() == "false":
+                elif predicted_label == "B":
                     found_score = prob_false
         abstain_scores.append(found_score)
 
@@ -197,7 +170,6 @@ def main():
             q_prompt = f"Question: {instance['question']}\n"
             for ck, ct in instance["choices"].items():
                 q_prompt += f"{ck}: {ct}\n"
-
             feedback_data.append({
                 "question": q_prompt,
                 "proposed_answer": answers_given[idx],
@@ -205,8 +177,8 @@ def main():
                 "abstain_flag": abstain_flags[idx],
                 "correct_flag": correct_flags[idx]
             })
-
         feedback_dir = f"feedbacks/{dataset_name}/multirelated"
+        os.makedirs(feedback_dir, exist_ok=True)
         feedback_path = f"{feedback_dir}/{model_name}_{dataset_name}_{source_language}_multirelated.json"
         with open(feedback_path, "w", encoding="utf-8") as ff:
             json.dump(feedback_data, ff, indent=4, ensure_ascii=False)
@@ -220,13 +192,13 @@ def main():
             "abstain_scores": abstain_scores
         }
         out_dir = f"preds/{dataset_name}/multirelated"
+        os.makedirs(out_dir, exist_ok=True)
         out_path = f"{out_dir}/{model_name}_{dataset_name}_{source_language}_multirelated.json"
         with open(out_path, "w", encoding="utf-8") as ff:
             json.dump(out_data, ff, indent=2, ensure_ascii=False)
         print(f"[Local output saved to {out_path}]")
 
-
-    print("-"*10, "Multi-Related", "-"*10)
+    print("-" * 10, "Multi-Related", "-" * 10)
     print("Model:", model_name)
     print("Dataset:", dataset_name)
     print("Language:", source_language)
@@ -235,10 +207,42 @@ def main():
 
     if result_out:
         result_dir = f"results/{dataset_name}/multirelated"
+        os.makedirs(result_dir, exist_ok=True)
         result_path = f"{result_dir}/{model_name}_{dataset_name}_{source_language}_multirelated.json"
         with open(result_path, "w", encoding="utf-8") as rf:
             json.dump(final_scores, rf, indent=2, ensure_ascii=False)
         print(f"[Saved result metrics to {result_path}]")
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-m", "--model", required=True, help="Which language model to use.")
+    parser.add_argument("-d", "--dataset", required=True, help="Dataset to run on (mmlu, hellaswag, belebele, etc.).")
+    parser.add_argument("-s", "--speak", default="bn", help="Primary language code, e.g. 'bn', 'es', 'nl', etc.")
+    parser.add_argument("-o", "--portion", default=1.0, type=float, help="Only use this fraction of dataset.")
+    parser.add_argument("-l", "--local", default=False, action='store_true', help="If set, save local JSON of predictions.")
+    parser.add_argument("-f", "--feedback", default=False, action='store_true', help="If set, save a separate file of generated feedback.")
+    parser.add_argument("-r", "--result", default=False, action='store_true', help="If set, save result metrics to a local JSON file.")
+    parser.add_argument("-b", "--batch_size", type=int, default=BATCH_SIZE, help="Batch size for generation.")
+    parser.add_argument("--test-all", action="store_true", help="If specified, run all test languages (bn, kn, ml, mr, ne, ta, te) sequentially.")
+    args = parser.parse_args()
+    print("Arguments:", args)
+    
+    start_time = time.time()
+
+    # init model
+    lm_utils.llm_init(args.model)
+
+    if args.test_all:
+        test_languages = ["bn", "kn", "ml", "mr", "ne", "ta", "te"]
+        for lang in test_languages:
+            print(f"\n===== Running test for language: {lang} =====")
+            run_pipeline(args.model, args.dataset, lang, args.portion, args.local, args.feedback, args.result, args.batch_size)
+    else:
+        run_pipeline(args.model, args.dataset, args.speak, args.portion, args.local, args.feedback, args.result, args.batch_size)
+
+    print(f"Total time taken: {time.time() - start_time:.2f} seconds")
+
 
 if __name__ == "__main__":
     main()

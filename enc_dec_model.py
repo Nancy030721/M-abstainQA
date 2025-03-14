@@ -2,7 +2,7 @@ import torch
 from transformers import AutoTokenizer, AutoConfig
 from enc_dec_model_runner import EncDecModelRunner
 
-class LLM:
+class EncDecModel:
     def __init__(self, model, engine_dir, engine_name="enc_dec", debug_mode=False):
         self.model_name = model
         self.engine_dir = engine_dir
@@ -64,7 +64,7 @@ if __name__ == "__main__":
         "The future of AI is",
     ]
 
-    llm = LLM(model="CohereForAI/aya-101", engine_dir="/data/aya-101-trt-bf16-engine/")
+    llm = EncDecModel(model="CohereForAI/aya-101", engine_dir="/data/aya-101-trt-bf16-engine/")
     outputs = llm.generate(prompts, return_dict=True)
 
     if isinstance(outputs, dict):
