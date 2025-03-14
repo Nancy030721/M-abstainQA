@@ -20,15 +20,15 @@ This project explores multilingual feedback as a strategy for improving the abst
 ## 📊 Dataset Statistics
 Below are the specific languages and datasets we used in our experiments. Other languages available in these datasets were not included in our analysis:
 
-| Language |  code   | HellaSwag Test Data | MMLU Test Data |
+| Language |  code | HellaSwag Test Data | MMLU Test Data |
 |----------|---------|---------------------|----------------|
-| Bengali  |   bn    |       771           |     726        |
-| Kannada  |   kn    |       761           |     646        |
-| Malayalam|   ml    |       753           |     639        |
-| Marathi  |   mr    |       774           |     720        |
-| Nepali   |   ne    |       777           |     740        |
-| Tamil    |   ta    |       700           |     676        |
-| Telugu   |   te    |       738           |     647        |
+| Bengali  |   bn  |       771    |     726 |
+| Kannada  |   kn  |       761    |     646 |
+| Malayalam|   ml  |       753    |     639 |
+| Marathi  |   mr  |       774    |     720 |
+| Nepali |   ne  |       777    |     740 |
+| Tamil  |   ta  |       700    |     676 |
+| Telugu |   te  |       738    |     647 |
 
 ## How to Run 🚀 
 1. Clone the repository:
@@ -123,13 +123,13 @@ python multirelated_batched.py -m aya_13b -d mmlu -s bn -o 0.1 -l -f
 ## Results: MMLU Test Data Abstain Rate
 Below is a comparison of our reproduced abstain rates with the original results from the paper.
 
-| Language  | Code | MultiRandom (Ours) | MultiRelated (Ours) | MultiRandom (Original) | MultiRelated (Original) | Difference (MultiRelated) |
-|-----------|------|--------------------|---------------------|------------------------|-------------------------|---------------------------|
-| Bengali   | bn   | 0.552              | 0.661               | 0.597                  | 0.621                   | **+0.040**                |
-| Kannada   | kn   | 0.475              | 0.646               | 0.615                  | 0.704                   | **-0.058**                |
-| Malayalam | ml   | 0.388              | 0.642               | 0.561                  | 0.595                   | **+0.047**                |
-| Marathi   | mr   | 0.536              | 0.461               | 0.524                  | 0.661                   | **-0.200**                |
-| Nepali    | ne   | 0.462              | 0.345               | 0.549                  | 0.590                   | **-0.245**                |
-| Tamil     | ta   | 0.570              | 0.732               | 0.628                  | 0.643                   | **+0.089**                |
-| Telugu    | te   | 0.433              | 0.491               | 0.605                  | 0.628                   | **-0.137**                |
-| **Average** | -  | **0.484**  | **0.568**          | **0.583**           | **0.635**   | **-0.067**
+| Language  | Code |MonoEnglish (Ours)|MonoNative (Ours)|MultiRandom (Ours)|MultiRelated (Ours)|MonoEnglish (Original)|MonoNative (Original) |MultiRandom (Original)|MultiRelated (Original)|Difference (MultiRelated)|
+|-|-|-|-|-|-|-|-|-|-|-|
+| Bengali   | bn | 0.377 | 0.375 | 0.552 | 0.661 | 0.580 | 0.611 | 0.597 | 0.621  | **+0.040**  |
+| Kannada   | kn | 0.370 | 0.358 | 0.475 | 0.646 | 0.515 | 0.607 | 0.615 | 0.704  | **-0.058**  |
+| Malayalam | ml | 0.316 | 0.356 | 0.388 | 0.642 | 0.604 | 0.649 | 0.561 | 0.595  | **+0.047**  |
+| Marathi   | mr | 0.363 | 0.356 | 0.536 | 0.461 | 0.529 | 0.460 | 0.524 | 0.661  | **-0.200**  |
+| Nepali    | ne | 0.343 | 0.359 | 0.462 | 0.345 | 0.578 | 0.583 | 0.549 | 0.590  | **-0.245**  |
+| Tamil     | ta | 0.311 | 0.309 | 0.570 | 0.732 | 0.533 | 0.594 | 0.628 | 0.643  | **+0.089**  |
+| Telugu    | te | 0.347 | 0.332 | 0.433 | 0.491 | 0.520 | 0.688 | 0.605 | 0.628  | **-0.137**  |
+| **Average** | -  | **0.347** | **0.347** | **0.484** | **0.568** | **0.551** | **0.599** | **0.583** | **0.635** | **-0.067**
