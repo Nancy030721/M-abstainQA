@@ -1,0 +1,9 @@
+{
+  "reliable_accuracy": 0.5854383358098069,
+  "effective_reliability": 0.14915693904020752,
+  "abstain_accuracy": 0.5979247730220493,
+  "abstain_precision": 0.6836734693877551,
+  "abstain_recall": 0.1936416184971098,
+  "abstain_ece": 0.3930296386810104,
+  "abstain_rate": 0.12710765239948119
+}
