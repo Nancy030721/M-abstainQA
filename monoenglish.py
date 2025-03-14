@@ -76,7 +76,7 @@ def main():
     feedback_responses = []
     for i in tqdm(range(0, len(feedback_prompts), batch_size)):
         batch_prompts = feedback_prompts[i:i+batch_size]
-        batch_feedback = lm_utils.llm_response(batch_prompts, model_name, probs=False, temperature=1, max_new_tokens=100, repetition_penalty=1.1)
+        batch_feedback = lm_utils.llm_response(batch_prompts, model_name, probs=False, temperature=1, max_new_tokens=100, repetition_penalty=1.2)
         feedback_responses.extend(batch_feedback)
 
     feedback_single = []
