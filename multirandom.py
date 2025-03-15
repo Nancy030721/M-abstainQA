@@ -63,7 +63,7 @@ def run_pipeline(model_name, dataset_name, source_language, portion, local_out, 
     feedback_responses = [None] * len(feedback_prompts)
     for i in tqdm(range(0, len(feedback_prompts), batch_size)):
         batch_prompts = feedback_prompts[i:i+batch_size]
-        batch_feedback = lm_utils.llm_response(batch_prompts, model_name, probs=False, temperature=0.7, max_new_tokens=100, repetition_penalty=1.1)
+        batch_feedback = lm_utils.llm_response(batch_prompts, model_name, probs=False, temperature=1.0, max_new_tokens=100, repetition_penalty=1.1)
         feedback_responses[i:i+batch_size] = batch_feedback
 
     feedback1 = [None] * len(data["test"])

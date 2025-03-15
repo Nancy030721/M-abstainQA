@@ -68,7 +68,7 @@ def run_pipeline(model_name, dataset_name, speak, portion, local_out, feedback_o
     expert_outputs = []
     for i in tqdm(range(0, len(expert_prompts), batch_size)):
         batch_prompts = expert_prompts[i:i+batch_size]
-        batch_expert = lm_utils.llm_response(batch_prompts, model_name, probs=False, temperature=1, max_new_tokens=50)
+        batch_expert = lm_utils.llm_response(batch_prompts, model_name, probs=False, temperature=1.0, max_new_tokens=50)
         expert_outputs.extend(batch_expert)
 
     expert_knowledges = []

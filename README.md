@@ -4,7 +4,7 @@ This repository contains our implementation for reproducing the experiments from
 ["Teaching LLMs to Abstain across Languages via Multilingual Feedback"](https://arxiv.org/abs/2406.15948).
 
 ## 📌 Overview
-This project explores multilingual feedback as a strategy for improving the abstention behavior of large language models (LLMs), especially in low-resource languages. We implement the **MONO-NATIVE**, **MONO-NATIVE**, **MULTI-RANDOM**, and **MULTI-RELATED** feedback approach and compare it with other abstention strategies.
+This project explores multilingual feedback as a strategy for improving the abstention behavior of large language models (LLMs), especially in low-resource languages. We implement the **MonoNative**, **MonoEnglish**, **MultiRandom**, and **MultiRelated** feedback approach and compare it with other abstention strategies.
 
 ## 🔧 Implementation Details
 - **Language:** Python
@@ -16,7 +16,7 @@ This project explores multilingual feedback as a strategy for improving the abst
 - **Datasets Used:**
   - [M-MMLU](https://github.com/nlp-uoregon/mlmm-evaluation)(Multilingual Massive Multitask Language Understanding): Open-sourced and accessible for multilingual QA evaluation
   - [HellaSwag](https://github.com/nlp-uoregon/mlmm-evaluation): Open-sourced dataset for commonsense reasoning in multiple languages.
-  <!-- - [Belebele](https://huggingface.co/datasets/belebele): Multilingual reading comprehension dataset -->
+  - [Belebele](https://huggingface.co/datasets/belebele): Multilingual reading comprehension dataset
 ## 📊 Dataset Statistics
 Below are the specific languages and datasets we used in our experiments. Other languages available in these datasets were not included in our analysis:
 
@@ -113,7 +113,7 @@ These experiments allow flexibility in **model selection**, **dataset choice**, 
 
 
 ## Results: 
-### MMLU Test Data Abstain Rate with Aya-13B
+### M-MMLU Test Data Abstain Rate with Aya-13B
 Below is a comparison of our reproduced abstain rates with the original results from the paper.
 
 | Language  | Code |MonoEnglish (Ours)|MonoNative (Ours)|MultiRandom (Ours)|MultiRelated (Ours)|MonoEnglish (Original)|MonoNative (Original) |MultiRandom (Original)|MultiRelated (Original)|Difference (MultiRelated)|
@@ -127,7 +127,7 @@ Below is a comparison of our reproduced abstain rates with the original results 
 | Telugu    | te | 0.347 | 0.332 | 0.433 | 0.491 | 0.520 | 0.688 | 0.605 | 0.628  | **-0.137**  |
 | **Average** | -  | **0.347** | **0.347** | **0.484** | **0.568** | **0.551** | **0.599** | **0.583** | **0.635** | **-0.067**
 
-### Hellaswag Test Data Abstain Rate with Aya-13B
+### M-Hellaswag Test Data Abstain Rate with Aya-13B
 Below is a comparison of our reproduced abstain rates with the original results from the paper.
 
 | Language  | Code |MonoEnglish (Ours)|MonoNative (Ours)|MultiRandom (Ours)|MultiRelated (Ours)|MonoEnglish (Original)|MonoNative (Original) |MultiRandom (Original)|MultiRelated (Original)|Difference (MultiRelated)|
